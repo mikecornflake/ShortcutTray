@@ -36,7 +36,8 @@ Interface
 
 Uses
   Classes, Contnrs, SysUtils, Forms, Controls, Menus, ExtCtrls, Dialogs,
-  LazFileUtils;
+  LazFileUtils
+  {$IFDEF Windows}, Windows{$ENDIF};
 
 Type
 
@@ -63,6 +64,7 @@ Type
     FTokens: TStringList;
     FShortcutsFile: String;
     FShortcutInfos: TFPObjectList;
+    FMenuShowing: Boolean;
     Procedure AddSeparatorToMenu(Const AMenu: String);
     Function ExpandShortcutTokens(Const AText: String): String;
     Function ExtractExeAndParams(Const ALine: String; out AExe, AParams: String): Boolean;
@@ -109,6 +111,7 @@ Begin
   FTokens.NameValueSeparator := '=';
 
   RebuildMenu;
+  FMenuShowing := False;
 End;
 
 Procedure TfrmShortcutTray.FormDestroy(Sender: TObject);
@@ -118,9 +121,27 @@ Begin
 End;
 
 Procedure TfrmShortcutTray.TrayIconClick(Sender: TObject);
+Var
+  P: TPoint;
 Begin
-  RebuildMenu;
-  pmShortcuts.PopUp;
+  If FMenuShowing Then
+    Exit;
+
+  FMenuShowing := True;
+  Try
+    {$IFDEF Windows}
+    SetForegroundWindow(Handle);
+    {$ENDIF}
+
+    GetCursorPos(P);
+    pmShortcuts.Popup(P.X, P.Y);
+
+    {$IFDEF Windows}
+    PostMessage(Handle, WM_NULL, 0, 0);
+    {$ENDIF}
+  Finally
+    FMenuShowing := False;
+  End;
 End;
 
 Procedure TfrmShortcutTray.SetTrayIcon(AImageIndex: Integer);
