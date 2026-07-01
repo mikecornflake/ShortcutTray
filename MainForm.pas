@@ -52,7 +52,7 @@ Type
   { TfrmShortcutTray }
 
   TfrmShortcutTray = Class(TForm)
-    ImageList1: TImageList;
+    ilShortcuts: TImageList;
     pmShortcuts: TPopupMenu;
     TrayIcon: TTrayIcon;
     Procedure TrayIconClick(Sender: TObject);
@@ -76,18 +76,23 @@ Type
     Procedure DoAbout(Sender: TObject);
     Procedure ReloadShortcuts(Sender: TObject);
     Procedure ExitApp(Sender: TObject);
+    Procedure SetTrayIcon(AImageIndex: Integer);
   Public
   End;
 
 Var
   frmShortcutTray: TfrmShortcutTray;
 
+Const
+  ICON_TRAY_ENABLED = 11;
+  ICON_TRAY_DISABLED = 12;
+
 Implementation
 
 {$R *.lfm}
 
 Uses
-  StrUtils, OSSupport, FileSupport, StringSupport, FormAbout;
+  StrUtils, OSSupport, FileSupport, StringSupport, FormAbout, Graphics;
 
   { TfrmShortcutTray }
 
@@ -118,6 +123,19 @@ Begin
   pmShortcuts.PopUp;
 End;
 
+Procedure TfrmShortcutTray.SetTrayIcon(AImageIndex: Integer);
+Var
+  LIcon: TIcon;
+Begin
+  LIcon := TIcon.Create;
+  Try
+    ilShortcuts.GetIcon(AImageIndex, LIcon);
+    TrayIcon.Icon.Assign(LIcon);
+  Finally
+    LIcon.Free;
+  End;
+End;
+
 Function TfrmShortcutTray.ExpandShortcutTokens(Const AText: String): String;
 Var
   i: Integer;
@@ -133,8 +151,8 @@ Begin
     TokenValue := Trim(FTokens.ValueFromIndex[i]);
 
     If TokenName <> '' Then
-      Result := StringReplace(Result, '<' + TokenName + '>',
-        TokenValue, [rfReplaceAll, rfIgnoreCase]);
+      Result := StringReplace(Result, '<' + TokenName + '>', TokenValue,
+        [rfReplaceAll, rfIgnoreCase]);
   End;
 End;
 
@@ -243,8 +261,8 @@ Procedure TfrmShortcutTray.AddShortcutToMenu(Const AMenu, ACaption, AExe, AParam
 Var
   Info: TShortcutInfo;
   FolderMenu, Item: TMenuItem;
-  sExt: String;
   bFile, bFolder: Boolean;
+  icoTemp: TIcon;
 Begin
   bFile := FileExists(AExe);
   bFolder := DirectoryExists(AExe);
@@ -279,29 +297,13 @@ Begin
   Item.Tag := PtrInt(Info);
   Item.OnClick := @RunShortcut;
 
-  If bFile Then
-  Begin
-    sExt := ExtractFileExt(AExe);
-
-    If SameText(sExt, '.exe') Then
-      Item.ImageIndex := 0
-    Else If SameText(sExt, '.pdf') Then
-      Item.ImageIndex := 2
-    Else If IsTextfile(sExt) Or SameText(sExt, '.ahk') Then
-      Item.ImageIndex := 3
-    Else If IsImage(sExt) Then
-      Item.ImageIndex := 4
-    Else If IsVideo(sExt) Then
-      Item.ImageIndex := 5
-    Else If InArray(sExt, ['.xls', '.xlsx']) Then
-      Item.ImageIndex := 6
-    Else If InArray(sExt, ['.doc', '.docx']) Then
-      Item.ImageIndex := 7
-    Else If InArray(sExt, ['.com', '.bat', '.ps1']) Then
-      Item.ImageIndex := 8;
-  End
-  Else If bFolder Then
-    Item.ImageIndex := 1;
+  icoTemp := GetShellSmallIcon(AExe);
+  Try
+    If Assigned(icoTemp) Then
+      Item.ImageIndex := ilShortcuts.AddIcon(icoTemp);
+  Finally
+    icoTemp.Free;
+  End;
 
   FolderMenu.Add(Item);
 End;
@@ -384,53 +386,58 @@ Procedure TfrmShortcutTray.RebuildMenu;
 Var
   Item: TMenuItem;
 Begin
-  pmShortcuts.Items.Clear;
-  LoadShortcuts;
+  SetTrayIcon(ICON_TRAY_DISABLED);
+  Try
+    pmShortcuts.Items.Clear;
+    LoadShortcuts;
 
-  If FShortcutInfos.Count = 0 Then
-  Begin
+    If FShortcutInfos.Count = 0 Then
+    Begin
+      Item := TMenuItem.Create(pmShortcuts);
+      Item.Caption := 'No shortcuts found';
+      Item.Enabled := False;
+      pmShortcuts.Items.Add(Item);
+    End;
+
     Item := TMenuItem.Create(pmShortcuts);
-    Item.Caption := 'No shortcuts found';
-    Item.Enabled := False;
+    Item.Caption := '-';
     pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := 'About';
+    Item.OnClick := @DoAbout;
+    Item.ImageIndex := 11;
+    pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := '-';
+    pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := 'Reload shortcuts';
+    Item.OnClick := @ReloadShortcuts;
+    Item.ImageIndex := 9;
+    pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := 'Open shortcuts.txt';
+    Item.OnClick := @OpenShortcutsFile;
+    Item.Enabled := FileExistsUTF8(FShortcutsFile);
+    Item.ImageIndex := 3;
+    pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := '-';
+    pmShortcuts.Items.Add(Item);
+
+    Item := TMenuItem.Create(pmShortcuts);
+    Item.Caption := 'Exit';
+    Item.OnClick := @ExitApp;
+    Item.ImageIndex := 10;
+    pmShortcuts.Items.Add(Item);
+  Finally
+    SetTrayIcon(ICON_TRAY_ENABLED);
   End;
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := '-';
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := 'About';
-  Item.OnClick := @DoAbout;
-  Item.ImageIndex := 11;
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := '-';
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := 'Reload shortcuts';
-  Item.OnClick := @ReloadShortcuts;
-  Item.ImageIndex := 9;
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := 'Open shortcuts.txt';
-  Item.OnClick := @OpenShortcutsFile;
-  Item.Enabled := FileExistsUTF8(FShortcutsFile);
-  Item.ImageIndex := 3;
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := '-';
-  pmShortcuts.Items.Add(Item);
-
-  Item := TMenuItem.Create(pmShortcuts);
-  Item.Caption := 'Exit';
-  Item.OnClick := @ExitApp;
-  Item.ImageIndex := 10;
-  pmShortcuts.Items.Add(Item);
 End;
 
 Procedure TfrmShortcutTray.RunShortcut(Sender: TObject);
