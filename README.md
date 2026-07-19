@@ -1,6 +1,6 @@
-# ShortcutTray
+# Inspector Mike Portable Start Menu
 
-**ShortcutTray** is a lightweight Lazarus/LCL system tray application
+**IM_Start** is a lightweight Lazarus/LCL system tray application
 that provides quick access to your favourite applications, folders and
 documents.
 
