@@ -1,13 +1,14 @@
 # Inspector Mike Portable Start Menu
 
 **IM_Start** is a lightweight Lazarus/LCL system tray application
-that provides quick access to your favourite applications, folders and
-documents.
+that provides quick access to your favourite applications, folders 
+and documents.
 
-It reads a simple `shortcuts.txt` file located alongside the executable
-and builds a hierarchical popup menu. The configuration is designed to
-be easy to edit with any text editor and is ideal for portable USB
-drives, offshore toolkits, and development environments.
+It reads a simple `shortcuts.txt` file located alongside the 
+executable and builds a hierarchical popup menu. The configuration 
+is designed to be easy to edit with any text editor and is 
+ideal for portable USB drives, offshore toolkits, and development 
+environments.
 
 ## Features
 
@@ -30,8 +31,8 @@ Lines beginning with `;` or `#` are treated as comments.
 
 ### Tokens
 
-A special `[Tokens]` section allows commonly-used paths to be defined
-once and reused throughout the file.
+A special `[Tokens]` section allows commonly-used paths to be 
+defined once and reused throughout the file.
 
 ``` ini
 [Tokens]
@@ -99,12 +100,12 @@ Arduino IDE=...
 
 ## Missing shortcuts
 
-ShortcutTray checks that each target exists before adding it to the
-menu.
+ShortcutTray checks that each target exists before adding 
+it to the menu.
 
-This allows a single configuration file to be shared across multiple
-computers or portable drives. Missing applications or folders are simply
-omitted from the menu.
+This allows a single configuration file to be shared across 
+multiple computers or portable drives. Missing applications 
+or folders are simply omitted from the menu.
 
 ## License
 
