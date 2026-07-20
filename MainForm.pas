@@ -61,6 +61,7 @@ Type
     Procedure FormCreate(Sender: TObject);
     Procedure FormDestroy(Sender: TObject);
   Private
+    FShortcutImageCount: Integer;
     FTokens: TStringList;
     FShortcutsFile: String;
     FShortcutInfos: TFPObjectList;
@@ -91,6 +92,7 @@ Var
 Const
   ICON_TRAY_ENABLED = 11;
   ICON_TRAY_DISABLED = 12;
+  ICON_IE = 13;
 
 Implementation
 
@@ -119,6 +121,9 @@ Begin
   FTokens := TStringList.Create;
   FTokens.CaseSensitive := False;
   FTokens.NameValueSeparator := '=';
+
+  // Remember how many icons are built into the ImageList
+  FShortcutImageCount := ilShortcuts.Count;
 
   RebuildMenu;
   FMenuShowing := False;
@@ -185,6 +190,10 @@ Var
   Line, SectionName, CaptionText, CommandText: String;
   ExeName, Params: String;
 Begin
+  // Remove dynamically added icons
+  While ilShortcuts.Count > FShortcutImageCount Do
+    ilShortcuts.Delete(ilShortcuts.Count - 1);
+
   FShortcutInfos.Clear;
   FTokens.Clear;
 
@@ -425,24 +434,37 @@ Begin
   FolderMenu.Add(Item);
 End;
 
+// TODO FileSupport?
+Function IsURL(Const S: String): Boolean;
+Begin
+  Result :=
+    S.StartsWith('http://', True) Or S.StartsWith('https://', True) Or
+    S.StartsWith('sharepoint:', True);
+End;
+
 Procedure TfrmIMStart.AddShortcutToMenu(Const AMenu, ACaption, AExe, AParams: String);
 Var
   Info: TShortcutInfo;
   FolderMenu, Item: TMenuItem;
-  bFile, bFolder: Boolean;
+  bFile, bFolder, bURL: Boolean;
   icoTemp: TIcon;
 Begin
   bFile := FileExists(AExe);
   bFolder := DirectoryExists(AExe);
+  bURL := IsURL(AExe);
 
-  If Not bFile And Not bFolder Then
+  If Not bFile And Not bFolder And Not bURL Then
     Exit;
 
   Info := TShortcutInfo.Create;
   Info.MenuName := AMenu;
   Info.ExeName := AExe;
   Info.Params := AParams;
-  Info.WorkDir := ExtractFilePath(AExe);
+
+  If bURL Then
+    Info.WorkDir := ''   // URLs have no working directory
+  Else
+    Info.WorkDir := ExtractFilePath(AExe);
 
   If Trim(ACaption) <> '' Then
     Info.Caption := Trim(ACaption)
@@ -461,16 +483,22 @@ Begin
     Item.Caption := Trim(ACaption)
   Else
     Item.Caption := ExtractFileNameOnly(AExe);
+
   Item.Hint := AExe + ' ' + AParams;
   Item.Tag := PtrInt(Info);
   Item.OnClick := @RunShortcut;
 
-  icoTemp := GetShellSmallIcon(AExe);
-  Try
-    If Assigned(icoTemp) Then
-      Item.ImageIndex := ilShortcuts.AddIcon(icoTemp);
-  Finally
-    icoTemp.Free;
+  If bURL Then
+    Item.ImageIndex := ICON_IE
+  Else
+  Begin
+    icoTemp := GetShellSmallIcon(AExe);
+    Try
+      If Assigned(icoTemp) Then
+        Item.ImageIndex := ilShortcuts.AddIcon(icoTemp);
+    Finally
+      icoTemp.Free;
+    End;
   End;
 
   FolderMenu.Add(Item);
