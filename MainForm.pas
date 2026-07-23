@@ -103,7 +103,7 @@ Uses
   FormEditor,
   // Here to hopefully activate the TabPage in FormAbout
   ffmpegSupport, ImageMagickSupport, LibmpvSupport, netMCSupport,
-  TesseractSupport, XPDFSupport, qpdfSupport;
+  TesseractSupport, XPDFSupport, qpdfSupport, PopplerSupport;
 
   { TfrmIMStart }
 
@@ -137,6 +137,7 @@ Begin
   InitializeTesseract;
   InitializeXPDF;
   Initializeqpdf;
+  InitializePoppler;
 End;
 
 Procedure TfrmIMStart.FormDestroy(Sender: TObject);
